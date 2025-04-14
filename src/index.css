@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* Hide internal horizontal scrollbar inside react-window */
+.react-window-wrapper .ReactVirtualized__Grid::-webkit-scrollbar:horizontal {
+    display: none;
+  }
+  
+  .react-window-wrapper .ReactVirtualized__Grid {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  
+  
