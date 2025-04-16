@@ -4,22 +4,22 @@ import { FixedSizeList as List } from 'react-window';
 const COLUMN_WIDTH = 120;
 
 const Row = ({ index, style, data }) => {
-  const { headers, rows, scrollRef } = data;
+  const { headers, rows} = data;
   const totalWidth = headers.length * COLUMN_WIDTH;
 
   if (index === 0) {
     // Header Row
     return (
       <div
-        ref={scrollRef}
-        className="flex bg-purple-100 font-bold w-max"
+        // ref={scrollRef}
+        className="flex bg-purple-200 font-bold w-max"
         style={{ ...style, width: totalWidth }}
       >
         {headers.map((header, idx) => (
           <div
             key={idx}
             style={{ width: COLUMN_WIDTH, padding: '4px' }}
-            className="overflow-hidden whitespace-nowrap text-ellipsis border"
+            className="overflow-hidden whitespace-nowrap text-ellipsis border text-center"
           >
             {header}
           </div>
@@ -32,7 +32,7 @@ const Row = ({ index, style, data }) => {
 
   return (
     <div
-      className="flex w-max border-b border-gray-300"
+      className={`flex w-max border-0 border-gray-300 ${index %2 === 0 ? `bg-purple-100` : ""}`}
       style={{ ...style, width: totalWidth }}
     >
       {headers.map((header, idx) => (
@@ -54,9 +54,9 @@ const TableComponent = ({ headers, data }) => {
   const totalWidth = headers.length * COLUMN_WIDTH;
 
   return (
-    <div style={{ width: 600}} className=" rounded-md">
+    <div style={{ width: 600,}} className=" rounded-md">
       <List
-        height={465}
+        height={480}
         width={600}
         itemCount={data.length + 1}
         itemSize={30}
