@@ -48,38 +48,3 @@ function App() {
 
 export default App;
 
-
-// import{ useState } from 'react';
-// import FileUploader from './Components/FileUploader';
-// import ConfigForm from './Components/ConfigForm';
-// import PivotTable from './Components/PivotTable';
-
-// function App() {
-//   const [headers, setHeaders] = useState([]);
-//   const [data, setData] = useState([]);
-//   const [config, setConfig] = useState(null);
-
-//   // console.log("config = ", config);
-  
-
-//   return (
-//     <div className="max-w-7xl mx-auto p-6">
-//       <FileUploader onParsed={(h, d) => { setHeaders(h); setData(d); }} />
-        
-//       {headers.length > 0 && (
-//         <ConfigForm headers={headers} onConfigChange={setConfig} />
-//       )}
-//       {config && (
-//   <PivotTable
-//     data={data}
-//     groupBy={config.groupBy}
-//     columnField={config.columnField}
-//     sumColumn={config.sumColumn}
-//   />
-// )}
-
-//     </div>
-//   );
-// }
-
-// export default App;
