@@ -89,4 +89,3 @@ const FileUploader = ({ onParsed }) => {
 };
 
 export default FileUploader;
-

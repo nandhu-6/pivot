@@ -215,11 +215,12 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn = [], aggF
         height={320}
         width={600}
         itemCount={pivot.rows.length + (columnField.length > 1 ? 2 : 1)}
-        itemSize={40}
+        itemSize={30}
       >
         {Row}
       </List>
-    </div>
+      
+    </div> 
   );
 };
 
