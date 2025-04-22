@@ -8,14 +8,12 @@ const ConfigForm = ({ headers, onConfigChange }) => {
   const [aggFunction, setAggFunction] = useState({ value: 'sum', label: 'Sum' });
 
   useEffect(() => {
-    if (groupBy.length || columnField.length || sumColumn.length) {
-      onConfigChange({
-        groupBy: groupBy.map(option => option.value),
-        columnField: columnField.map(option => option.value),
-        sumColumn: sumColumn.length > 0 ? sumColumn[0].value : null,
-        aggFunction: aggFunction.value
-      });
-    }
+    onConfigChange({
+      groupBy: groupBy.map(option => option.value),
+      columnField: columnField.map(option => option.value),
+      sumColumn: sumColumn.map(option => option.value),
+      aggFunction: aggFunction.value
+    });
   }, [groupBy, columnField, sumColumn, aggFunction]);
 
   const options = headers.map(h => ({ value: h, label: h }));
@@ -37,7 +35,7 @@ const ConfigForm = ({ headers, onConfigChange }) => {
       </div>
       <div>
         <label className="block font-semibold mb-1 text-center">Value</label>
-        <Select options={options} value={sumColumn} onChange={val => setSumColumn([val])} />
+        <Select isMulti options={options} value={sumColumn} onChange={setSumColumn} />
       </div>
       <div className="col-span-3">
         <label className="block font-semibold mb-1 text-center">Aggregation</label>

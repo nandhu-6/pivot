@@ -1,9 +1,14 @@
 import React, { useMemo } from 'react';
 import { FixedSizeList as List } from 'react-window';
+//total
+const COLUMN_WIDTH = 160;
 
-const COLUMN_WIDTH = 150;
+const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn = [], aggFunction }) => {
 
-const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFunction }) => {
+  if (groupBy.length === 0 && columnField.length === 0 && sumColumn.length === 0) {
+    return null;
+  }
+
   const pivot = useMemo(() => {
     const columnSet = new Set();
     const columnMap = new Map();
@@ -15,38 +20,67 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
       const rowKey = groupBy.map(key => row[key]).join('|');
       const colKeyParts = columnField.map(col => row[col]);
       const colKey = colKeyParts.join('|');
-      const rawValue = row[sumColumn];
-
-      const value = parseFloat(rawValue);
-      const isValidNumber = !isNaN(value);
 
       columnSet.add(colKey);
       columnMap.set(colKey, colKeyParts);
 
       if (!rowMap.has(rowKey)) rowMap.set(rowKey, {});
       const existing = rowMap.get(rowKey);
+      // "North" -> { "Laptop": { "Total Revenue": [50000.55] } }
 
-      if (!existing[colKey]) existing[colKey] = [];
+      if (sumColumn.length > 0) {
+        sumColumn.forEach(sumCol => {
+          const rawValue = row[sumCol];
+          const value = parseFloat(rawValue);
+          const isValidNumber = !isNaN(value);
 
-      if (aggFunction === 'count') {
-        existing[colKey].push(1);
-        columnTotals[colKey] = (columnTotals[colKey] || 0) + 1;
-      } else if (isValidNumber) {
-        existing[colKey].push(value);
-        columnTotals[colKey] = (columnTotals[colKey] || 0) + value;
-        columnCounts[colKey] = (columnCounts[colKey] || 0) + 1;
+          if (!existing[colKey]) existing[colKey] = {};
+          if (!existing[colKey][sumCol]) existing[colKey][sumCol] = [];
+
+          if (aggFunction === 'count') {
+            existing[colKey][sumCol].push(1);
+            columnTotals[`${colKey}|${sumCol}`] = (columnTotals[`${colKey}|${sumCol}`] || 0) + 1;
+          } else if (isValidNumber) {
+            existing[colKey][sumCol].push(value);
+            columnTotals[`${colKey}|${sumCol}`] = (columnTotals[`${colKey}|${sumCol}`] || 0) + value;
+            columnCounts[`${colKey}|${sumCol}`] = (columnCounts[`${colKey}|${sumCol}`] || 0) + 1;
+          }
+          //columntotals : "Laptop|Total Revenue" -> 50000.5
+          //columncounts : "Laptop|Total Revenue" -> 1
+        });
+      } else {
+        // If no sumColumn selected, still mark presence
+        if (!existing[colKey]) existing[colKey] = { _dummy: [1] };
       }
     });
 
     const columns = Array.from(columnSet).sort();
+    //Converts columnSet to an array and sorts it (e.g., ["Bookshelf", "Desk", "Desk Chair", "Laptop", "Smartphone", "Tablet"])
 
     const rows = Array.from(rowMap.entries()).map(([rowKey, colValues]) => {
-      const values = columns.map(col => {
-        const arr = colValues[col] || [];
-        if (aggFunction === 'sum') return arr.reduce((a, b) => a + b, 0);
-        if (aggFunction === 'count') return arr.length;
-        if (aggFunction === 'avg') return arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2) : 0;
-        return 0;
+      // rows: Maps over rowMap to generate rows with calculated values.
+      // For "North":
+      // rowKeyParts: ["North"]
+      // values: ["", "", "", "50000.55", "4199.94", ""]
+      // For "South":
+      // rowKeyParts: ["South"]
+      // values: ["", "1199.92", "", "", "", "629.93"]
+      // For "East":
+      // rowKeyParts: ["East"]
+      // values: ["", "", "7199.92", "", "3149.91", ""]
+
+      const values = columns.flatMap(col => {
+        if (sumColumn.length > 0) {
+          return sumColumn.map(sumCol => {
+            const arr = colValues[col]?.[sumCol] || [];
+            if (aggFunction === 'sum') return arr.reduce((a, b) => (a + b), 0).toFixed(2);
+            if (aggFunction === 'count') return arr.length;
+            if (aggFunction === 'avg') return arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2) : 0;
+            return 0;
+          });
+        } else {
+          return [colValues[col] ? '' : ''];
+        }
       });
 
       return {
@@ -56,23 +90,33 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
     });
 
     rows.push({
-      rowKeyParts: groupBy.length > 0 ? ['Total', ...Array(groupBy.length - 1).fill('')] : ['Total'],
-      values: columns.map(col => {
-        if (aggFunction === 'sum' || aggFunction === 'count') {
-          return columnTotals[col] || 0;
-        } else if (aggFunction === 'avg') {
-          const sum = columnTotals[col] || 0;
-          const count = columnCounts[col] || 0;
-          return count ? (sum / count).toFixed(2) : 0;
+      rowKeyParts: groupBy.length > 0 ? ['Grand Total', ...Array(groupBy.length - 1).fill('')] : ['Total'],
+      // rowKeyParts: groupBy.length > 0 ? ['Grand Total', ...Array(groupBy.length - 1).fill('')] : ['Total'],
+      // Total Row: Adds a total row with aggregated values for each column.
+      // rowKeyParts: ["Total"]
+      // values: ["1499.95", "2999.8", "7199.92", "50000.55", "4199.94", "629.93"]
+      values: columns.flatMap(col => {
+        if (sumColumn.length > 0) {
+          return sumColumn.map(sumCol => {
+            if (aggFunction === 'sum' || aggFunction === 'count') {
+              return (columnTotals[`${col}|${sumCol}`] || 0).toFixed(2);
+            } else if (aggFunction === 'avg') {
+              const sum = columnTotals[`${col}|${sumCol}`] || 0;
+              const count = columnCounts[`${col}|${sumCol}`] || 0;
+              return count ? (sum / count).toFixed(2) : 0;
+            }
+            return 0;
+          });
+        } else {
+          return [''];
         }
-        return 0;
       }),
     });
 
     return { columns, rows, columnMap };
   }, [data, groupBy, columnField, sumColumn, aggFunction]);
 
-  const totalWidth = (groupBy.length + pivot.columns.length) * COLUMN_WIDTH;
+  const totalWidth = (groupBy.length + pivot.columns.length * (sumColumn.length || 1)) * COLUMN_WIDTH;
 
   const getGroupedHeaders = (columns, columnMap, level) => {
     const groups = [];
@@ -105,7 +149,7 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
               </div>
             ))}
             {getGroupedHeaders(pivot.columns, pivot.columnMap, 0).map((group, i) => (
-              <div key={i} style={{ width: group.count * COLUMN_WIDTH }} className="border text-center">
+              <div key={i} style={{ width: group.count * COLUMN_WIDTH * (sumColumn.length || 1) }} className="border text-center">
                 {group.label}
               </div>
             ))}
@@ -114,13 +158,13 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
             {groupBy.map((_, i) => (
               <div key={i} style={{ width: COLUMN_WIDTH }} className="border" />
             ))}
-            {pivot.columns.map((colKey, i) => {
+            {pivot.columns.flatMap((colKey, i) => {
               const parts = pivot.columnMap.get(colKey);
-              return (
-                <div key={i} style={{ width: COLUMN_WIDTH, padding: '4px' }} className="border text-center">
-                  {parts[1]}
+              return (sumColumn.length > 0 ? sumColumn : ['']).map((sumCol, j) => (
+                <div key={`${i}-${j}`} style={{ width: COLUMN_WIDTH, padding: '4px' }} className={`border text-center measure-heading`}>
+                  {parts[1]}{sumCol && ` (${sumCol})`}
                 </div>
-              );
+              ));
             })}
           </div>
         </div>
@@ -129,16 +173,18 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
 
     if (index === 0) {
       return (
-        <div className="flex bg-purple-200 font-bold w-max" style={{ ...style, width: totalWidth }}>
+        <div className="flex bg-purple-200 font-bold w-max measure-heading" style={{ ...style, width: totalWidth }}>
           {groupBy.map((label, i) => (
             <div key={i} style={{ width: COLUMN_WIDTH, padding: '4px' }} className="border text-center">
               {label}
             </div>
           ))}
-          {pivot.columns.map((col, i) => (
-            <div key={i} style={{ width: COLUMN_WIDTH, padding: '4px' }} className="border text-center">
-              {col}
-            </div>
+          {pivot.columns.flatMap((col, i) => (
+            (sumColumn.length > 0 ? sumColumn : ['']).map((sumCol, j) => (
+              <div key={`${i}-${j}`} style={{ width: COLUMN_WIDTH, padding: '4px' }} className={`border text-center measure-heading`}>
+                {col}{sumCol && ` (${sumCol})`}
+              </div>
+            ))
           ))}
         </div>
       );
@@ -166,7 +212,7 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
   return (
     <div className="mt-4 rounded">
       <List
-        height={350}
+        height={320}
         width={600}
         itemCount={pivot.rows.length + (columnField.length > 1 ? 2 : 1)}
         itemSize={30}
@@ -178,3 +224,5 @@ const PivotTable = ({ data, groupBy = [], columnField = [], sumColumn, aggFuncti
 };
 
 export default PivotTable;
+
+
